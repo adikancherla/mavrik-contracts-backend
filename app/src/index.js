@@ -4,7 +4,7 @@ import "./index.css";
 import App from "./App";
 
 // import drizzle functions and contract artifact
-import { Drizzle, generateStore } from "drizzle";
+import { Drizzle } from "drizzle";
 import SimpleStorage from "./contracts/SimpleStorage.json";
 
 // let drizzle know what contracts we want and how to access our test blockchain
