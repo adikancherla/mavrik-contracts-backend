@@ -71,6 +71,7 @@ contract ERC1155MixedFungibleMintable is ERC1155MixedFungible {
     function mintFungible(uint256 _id, address[] calldata _to, uint256[] calldata _quantities) external creatorOnly(_id) {
 
         require(isFungible(_id));
+        require(_to.length == _quantities.length, "Array length must match");
 
         for (uint256 i = 0; i < _to.length; ++i) {
 

@@ -49,6 +49,8 @@ contract ERC1155Mintable is ERC1155 {
     // Batch mint tokens. Assign directly to _to[].
     function mint(uint256 _id, address[] calldata _to, uint256[] calldata _quantities) external creatorOnly(_id) {
 
+        require(_to.length == _quantities.length, "_to and _quantities array lengths must match.");
+
         for (uint256 i = 0; i < _to.length; ++i) {
 
             address to = _to[i];

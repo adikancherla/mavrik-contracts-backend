@@ -97,6 +97,7 @@ contract ERC1155AllowanceWrapper is IERC1155, ERC165
         @param _data    Additional data with no specified format, sent in call to `_to`
     */
     function safeBatchTransferFrom(address _from, address _to, uint256[] calldata _ids, uint256[] calldata _values, bytes calldata _data) external /*payable*/ {
+        require(_ids.length == _values.length, "_ids and _values array lengths must match.");
         if (msg.sender != _from) {
             for (uint256 i = 0; i < _ids.length; ++i) {
                 allowances[_from][msg.sender][_ids[i]] = allowances[_from][msg.sender][_ids[i]].sub(_values[i]);
