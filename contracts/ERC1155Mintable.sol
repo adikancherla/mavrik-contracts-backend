@@ -21,10 +21,14 @@ contract ERC1155Mintable is ERC1155 {
         _;
     }
 
-    function supportsInterface(bytes4 _interfaceId)
-    public
-    view
-    returns (bool) {
+    modifier creatorsOnly(uint256[] calldata _ids) {
+        for (uint256 i = 0; i < _ids.length; i++) {
+            require(creators[_ids[i]] == msg.sender);
+        }
+        _;
+    }
+
+    function supportsInterface(bytes4 _interfaceId) public view returns (bool) {
         if (_interfaceId == INTERFACE_SIGNATURE_URI) {
             return true;
         } else {
@@ -32,7 +36,7 @@ contract ERC1155Mintable is ERC1155 {
         }
     }
 
-    // Creates a new token type and assings _initialSupply to minter
+    // Creates a new token type and assigns _initialSupply to minter
     function create(uint256 _initialSupply, string calldata _uri) external returns(uint256 _id) {
 
         _id = ++nonce;
@@ -46,8 +50,10 @@ contract ERC1155Mintable is ERC1155 {
             emit URI(_uri, _id);
     }
 
-    // Batch mint tokens. Assign directly to _to[].
+    // Mint tokens of a type. Assign directly to _to[].
     function mint(uint256 _id, address[] calldata _to, uint256[] calldata _quantities) external creatorOnly(_id) {
+
+        //todo: may be check for max supply this token can have? right now an infinite number can be minted
 
         require(_to.length == _quantities.length, "_to and _quantities array lengths must match.");
 
@@ -56,6 +62,10 @@ contract ERC1155Mintable is ERC1155 {
             address to = _to[i];
             uint256 quantity = _quantities[i];
 
+            if (to.isContract()) {
+                require(IERC1155TokenReceiver(to).onERC1155Received(msg.sender, address(0x0), _id, quantity, '') == ERC1155_RECEIVED, "Receiver contract did not accept the transfer.");
+            }
+
             // Grant the items to the caller
             balances[_id][to] = quantity.add(balances[_id][to]);
 
@@ -63,11 +73,24 @@ contract ERC1155Mintable is ERC1155 {
             // the 0x0 source address implies a mint
             // It will also provide the circulating supply info.
             emit TransferSingle(msg.sender, address(0x0), to, _id, quantity);
-
-            if (to.isContract()) {
-                require(IERC1155TokenReceiver(to).onERC1155Received(msg.sender, msg.sender, _id, quantity, '') == ERC1155_RECEIVED, "Receiver contract did not accept the transfer.");
-            }
         }
+    }
+
+    // Batch mint tokens of different types. Assign directly to _to.
+    function batchMint(address _to, uint256[] calldata _ids, uint256[] calldata _amounts) external creatorsOnly(_ids) {
+        require(_ids.length == _amounts.length, "_to and _amounts array lengths must match");
+        if (_to.isContract()) {
+            require(IERC1155TokenReceiver(_to).onERC1155BatchReceived(msg.sender, address(0x0), _ids, _amounts, '') == ERC1155_BATCH_RECEIVED, "Receiver contract did not accept the transfer.");
+        }
+
+         // Executing all minting
+        for (uint256 i = 0; i < _ids.length; i++) {
+          // Update storage balance
+          balances[_ids[i]][_to] = balances[_ids[i]][_to].add(_amounts[i]);
+        }
+
+        // Emit batch mint event
+        emit TransferBatch(msg.sender, address(0x0), _to, _ids, _amounts);
     }
 
     function setURI(string calldata _uri, uint256 _id) external creatorOnly(_id) {

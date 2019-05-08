@@ -51,6 +51,9 @@ contract ERC1155MixedFungible is ERC1155 {
 
         require(_to != address(0x0), "cannot send to zero address");
         require(_from == msg.sender || operatorApproval[_from][msg.sender] == true, "Need operator approval for 3rd party transfers.");
+        if (_to.isContract()) {
+            require(IERC1155TokenReceiver(_to).onERC1155Received(msg.sender, _from, _id, _value, _data) == ERC1155_RECEIVED);
+        }
 
         if (isNonFungible(_id)) {
             require(nfOwners[_id] == _from);
@@ -65,10 +68,6 @@ contract ERC1155MixedFungible is ERC1155 {
         }
 
         emit TransferSingle(msg.sender, _from, _to, _id, _value);
-
-        if (_to.isContract()) {
-            require(IERC1155TokenReceiver(_to).onERC1155Received(msg.sender, _from, _id, _value, _data) == ERC1155_RECEIVED);
-        }
     }
 
     // overide
@@ -76,7 +75,9 @@ contract ERC1155MixedFungible is ERC1155 {
 
         require(_to != address(0x0), "cannot send to zero address");
         require(_ids.length == _values.length, "Array length must match");
-
+        if (_to.isContract()) {
+            require(IERC1155TokenReceiver(_to).onERC1155BatchReceived(msg.sender, _from, _ids, _values, _data) == ERC1155_BATCH_RECEIVED);
+        }
         // Only supporting a global operator approval allows us to do only 1 check and not to touch storage to handle allowances.
         require(_from == msg.sender || operatorApproval[_from][msg.sender] == true, "Need operator approval for 3rd party transfers.");
 
@@ -95,10 +96,6 @@ contract ERC1155MixedFungible is ERC1155 {
         }
 
         emit TransferBatch(msg.sender, _from, _to, _ids, _values);
-
-        if (_to.isContract()) {
-            require(IERC1155TokenReceiver(_to).onERC1155BatchReceived(msg.sender, _from, _ids, _values, _data) == ERC1155_BATCH_RECEIVED);
-        }
     }
 
     function balanceOf(address _owner, uint256 _id) external view returns (uint256) {

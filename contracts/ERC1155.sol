@@ -69,17 +69,15 @@ contract ERC1155 is IERC1155, ERC165
 
         require(_to != address(0x0), "_to must be non-zero.");
         require(_from == msg.sender || operatorApproval[_from][msg.sender] == true, "Need operator approval for 3rd party transfers.");
-
+        if (_to.isContract()) {
+            require(IERC1155TokenReceiver(_to).onERC1155Received(msg.sender, _from, _id, _value, _data) == ERC1155_RECEIVED, "Receiver contract did not accept the transfer.");
+        }
         // SafeMath will throw with insuficient funds _from
         // or if _id is not valid (balance will be 0)
         balances[_id][_from] = balances[_id][_from].sub(_value);
         balances[_id][_to]   = _value.add(balances[_id][_to]);
 
         emit TransferSingle(msg.sender, _from, _to, _id, _value);
-
-        if (_to.isContract()) {
-            require(IERC1155TokenReceiver(_to).onERC1155Received(msg.sender, _from, _id, _value, _data) == ERC1155_RECEIVED, "Receiver contract did not accept the transfer.");
-        }
     }
 
     /**
@@ -102,6 +100,9 @@ contract ERC1155 is IERC1155, ERC165
         require(_to != address(0x0), "destination address must be non-zero.");
         require(_ids.length == _values.length, "_ids and _values array lengths must match.");
         require(_from == msg.sender || operatorApproval[_from][msg.sender] == true, "Need operator approval for 3rd party transfers.");
+        if (_to.isContract()) {
+            require(IERC1155TokenReceiver(_to).onERC1155BatchReceived(msg.sender, _from, _ids, _values, _data) == ERC1155_BATCH_RECEIVED, "Receiver contract did not accept the transfer.");
+        }
 
         for (uint256 i = 0; i < _ids.length; ++i) {
             uint256 id = _ids[i];
@@ -115,12 +116,6 @@ contract ERC1155 is IERC1155, ERC165
 
         // MUST emit event
         emit TransferBatch(msg.sender, _from, _to, _ids, _values);
-
-        // Now that the balances are updated,
-        // call onERC1155BatchReceived if the destination is a contract
-        if (_to.isContract()) {
-            require(IERC1155TokenReceiver(_to).onERC1155BatchReceived(msg.sender, _from, _ids, _values, _data) == ERC1155_BATCH_RECEIVED, "Receiver contract did not accept the transfer.");
-        }
     }
 
     /**
