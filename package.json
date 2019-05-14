@@ -1,33 +1,27 @@
 {
-  "name": "drizzle-box",
+  "name": "mavrik",
   "version": "1.0.0",
+  "private": true,
   "description": "",
-  "main": "truffle-config.js",
+  "main": "index.js",
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/truffle-box/drizzle-box.git"
+    "url": "git@github.com:nevverlander/mavrik-contracts-backend.git"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/truffle-box/drizzle-box/issues"
-  },
-  "homepage": "https://github.com/truffle-box/drizzle-box#readme",
+  "author": "a@mavrik.co",
   "dependencies": {
-    "openzeppelin-solidity": "^2.1.1",
-    "@babel/polyfill": "^7.4.0",
-    "bignumber.js": "^4.1.0"
-  },
-  "devDependencies": {
-    "@babel/core": "^7.4.0",
-    "@babel/preset-env": "^7.4.2",
-    "@babel/register": "^7.4.0"
+    "dotenv": "^8.0.0",
+    "ethereumjs-tx": "^1.3.7",
+    "express": "^4.16.4",
+    "openpgp": "^4.5.1",
+    "web3": "^1.0.0-beta.55"
   }
 }

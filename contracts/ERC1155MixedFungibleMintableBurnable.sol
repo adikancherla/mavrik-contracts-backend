@@ -17,7 +17,7 @@ contract ERC1155MixedFungibleMintableBurnable is ERC1155MixedFungible {
         _;
     }
 
-    modifier fungibleCreatorsOnly(uint256[] calldata _ids) {
+    modifier fungibleCreatorsOnly(uint256[] memory _ids) {
         for (uint256 i = 0; i < _ids.length; i++) {
             require(creators[_ids[i]] == msg.sender);
             require(isFungible(_ids[i]));
@@ -25,7 +25,7 @@ contract ERC1155MixedFungibleMintableBurnable is ERC1155MixedFungible {
         _;
     }
 
-    modifier nonFungibleCreatorsOnly(uint256[] calldata _types) {
+    modifier nonFungibleCreatorsOnly(uint256[] memory _types) {
         for (uint256 i = 0; i < _types.length; i++) {
             require(creators[_types[i]] == msg.sender);
             require(isNonFungible(_types[i]));
@@ -73,7 +73,7 @@ contract ERC1155MixedFungibleMintableBurnable is ERC1155MixedFungible {
             nfOwners[id] = dst;
 
             // You could use base-type id to store NF type balances if you wish.
-            balances[_type][dst] = 1.add(balances[_type][dst]);
+            balances[_type][dst] = balances[_type][dst].add(1);
 
             emit TransferSingle(msg.sender, address(0x0), dst, id, 1);
         }
@@ -108,26 +108,28 @@ contract ERC1155MixedFungibleMintableBurnable is ERC1155MixedFungible {
     // Batch mint tokens of different non fungible types. Assign directly to _to.
     function batchMintNonFungibles(address _to, uint256[] calldata _types) external nonFungibleCreatorsOnly(_types) {
 
+        uint256[] memory ones;
+
         if (_to.isContract()) {
-            require(IERC1155TokenReceiver(_to).onERC1155BatchReceived(msg.sender, address(0x0), _types, 1, '') == ERC1155_BATCH_RECEIVED, "Receiver contract did not accept the transfer.");
+            require(IERC1155TokenReceiver(_to).onERC1155BatchReceived(msg.sender, address(0x0), _types, ones, '') == ERC1155_BATCH_RECEIVED, "Receiver contract did not accept the transfer.");
         }
 
         for (uint256 i = 0; i < _types.length; ++i) {
-            uint256 type = _types[i];
+            uint256 tokenType = _types[i];
             // Index are 1-based
-            uint256 index = maxIndex[type] + 1;
-            uint256 id  = type | index + i;
+            uint256 index = maxIndex[tokenType] + 1;
+            uint256 id  = tokenType | index + i;
 
             nfOwners[id] = _to;
 
             // You could use base-type id to store NF type balances if you wish.
-            balances[type][_to] = 1.add(balances[type][_to]);
-            maxIndex[type] = 1.add(maxIndex[type]);
+            balances[tokenType][_to] = balances[tokenType][_to].add(1);
+            maxIndex[tokenType] = maxIndex[tokenType].add(1);
 
         }
 
         // Emit batch mint event
-        emit TransferBatch(msg.sender, address(0x0), _to, _types, uint256[]);
+        emit TransferBatch(msg.sender, address(0x0), _to, _types, ones);
     }
 
     // Batch mint tokens of different fungible types. Assign directly to _to.
@@ -201,7 +203,8 @@ contract ERC1155MixedFungibleMintableBurnable is ERC1155MixedFungible {
         nfOwners[_ids[i]] = address(0x0);
     }
 
+    uint256[] memory ones;
     // Emit event
-    emit TransferBatch(msg.sender, _from, address(0x0), _ids, uint256[]);
+    emit TransferBatch(msg.sender, _from, address(0x0), _ids, ones);
   }
 }

@@ -21,7 +21,7 @@ contract ERC1155Mintable is ERC1155 {
         _;
     }
 
-    modifier creatorsOnly(uint256[] calldata _ids) {
+    modifier creatorsOnly(uint256[] memory _ids) {
         for (uint256 i = 0; i < _ids.length; i++) {
             require(creators[_ids[i]] == msg.sender);
         }
