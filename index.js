@@ -14,67 +14,87 @@ const satoshiTreasurePubKey = fs.readFileSync(
     "utf-8"
 );
 
-const signAndVerifyPGP = async () => {
-    try {
-        const pubkey = fs.readFileSync("files/test-pgp-public.pem", "utf-8");
-        const privkey = fs.readFileSync("files/test-pgp-private.pem", "utf-8");
-        //sign the hash of the message 'Apple' instead of clear text
-        const msg = crypto
-            .createHash("sha256")
-            .update("Apple")
-            .digest("hex");
+// const signAndVerifyPGP = async () => {
+//     try {
+//         const pubkey = fs.readFileSync("files/test-pgp-public.pem", "utf-8");
+//         const privkey = fs.readFileSync("files/test-pgp-private.pem", "utf-8");
+//         //sign the hash of the message 'Apple' instead of clear text
+//         const msg = crypto
+//             .createHash("sha256")
+//             .update("Apple")
+//             .digest("hex");
 
-        //sign
-        let privKeyObj = (await openpgp.key.readArmored(privkey)).keys[0];
-        let options = {
-            message: openpgp.cleartext.fromText(msg), // CleartextMessage or Message object
-            privateKeys: [privKeyObj] // for signing
-        };
-        let signature = await openpgp.sign(options);
-        //console.log(signature);
+//         //sign
+//         let privKeyObj = (await openpgp.key.readArmored(privkey)).keys[0];
+//         let options = {
+//             message: openpgp.cleartext.fromText(msg), // CleartextMessage or Message object
+//             privateKeys: [privKeyObj] // for signing
+//         };
+//         let signature = await openpgp.sign(options);
+//         //console.log(signature);
 
-        //verify
-        let verified = await verifyPgpSignature(signature.data, pubkey);
-        if (verified) {
-            console.log("Verified!!");
-        } else {
-            console.log("verification failed");
-        }
-    } catch (err) {
-        console.log("error occured", err);
-    }
-};
+//         //verify
+//         let verified = await verifyPgpSignature(signature.data, pubkey);
+//         if (verified) {
+//             console.log("Verified!!");
+//         } else {
+//             console.log("verification failed");
+//         }
+//     } catch (err) {
+//         console.log("error occured", err);
+//     }
+// };
 
-const signAndVerifyRSA = () => {
-    const privateKey = fs.readFileSync("files/test-rsa-private.pem", "utf-8");
-    const publicKey = fs.readFileSync("files/test-rsa-public.pem", "utf-8");
-    const message = "Hello world";
+// const signAndVerifyRSA = () => {
+//     const privateKey = fs.readFileSync("files/test-rsa-private.pem", "utf-8");
+//     const publicKey = fs.readFileSync("files/test-rsa-public.pem", "utf-8");
+//     const message = "Hello world";
 
-    const signer = crypto.createSign("sha256");
-    signer.update(message);
-    signer.end();
+//     const signer = crypto.createSign("sha256");
+//     signer.update(message);
+//     signer.end();
 
-    const signature = signer.sign(privateKey);
-    const signatureHex = signature.toString("hex");
+//     const signature = signer.sign(privateKey);
+//     const signatureHex = signature.toString("hex");
 
-    const verifier = crypto.createVerify("sha256");
-    verifier.update(message);
-    verifier.end();
+//     const verifier = crypto.createVerify("sha256");
+//     verifier.update(message);
+//     verifier.end();
 
-    const verified = verifier.verify(publicKey, signature);
+//     const verified = verifier.verify(publicKey, signature);
 
-    console.log(
-        JSON.stringify(
-            {
-                message: message,
-                signature: signatureHex,
-                verified: verified
-            },
-            null,
-            2
-        )
+//     console.log(
+//         JSON.stringify(
+//             {
+//                 message: message,
+//                 signature: signatureHex,
+//                 verified: verified
+//             },
+//             null,
+//             2
+//         )
+//     );
+// };
+
+//signAndVerifyRSA();
+//signAndVerifyPGP();
+
+app.post("/verify", async function(req, res) {
+    let signature = req.body.data;
+    //let verified = await verifyPgpSignature(signature, satoshiTreasurePubKey);
+    let verified = await verifyPgpSignature(
+        signature,
+        fs.readFileSync("files/test-pgp-public.pem")
     );
-};
+    if (verified) {
+        console.log("Verified signature. Sending ETH txn");
+        let resp = await sendTxn();
+        res.status(200).send(resp);
+    } else {
+        console.log("Signature verification failed");
+    }
+    res.status(500).send("Internal Server Error");
+});
 
 async function verifyPgpSignature(signature, publicKey) {
     try {
@@ -97,14 +117,11 @@ async function verifyPgpSignature(signature, publicKey) {
     }
 }
 
-//signAndVerifyRSA();
-//signAndVerifyPGP();
-
 const ethMainnetEndPoint =
-    "https://mainnet.infura.io/v3/45cf804e13ad4412b7d88d9cea4e5906";
+    "https://mainnet.infura.io/v3/" + process.env.INFURA_PROJECT_ID;
 
 const ethKovanEndPoint =
-    "https://kovan.infura.io/v3/45cf804e13ad4412b7d88d9cea4e5906";
+    "https://kovan.infura.io/v3/" + process.env.INFURA_PROJECT_ID;
 
 //Infura HttpProvider Endpoint
 //web3js = new web3(new web3.providers.HttpProvider(ethKovanEndPoint));
@@ -112,22 +129,7 @@ const ethKovanEndPoint =
 options = {};
 web3js = new web3(new web3.providers.HttpProvider("http://127.0.0.1:7545"));
 
-app.post("/verify", async function(req, res) {
-    let signature = req.body.data;
-    //let verified = await verifyPgpSignature(signature, satoshiTreasurePubKey);
-    let verified = await verifyPgpSignature(
-        signature,
-        fs.readFileSync("files/test-pgp-public.pem")
-    );
-    if (verified) {
-        console.log("Verified signature. Sending ETH txn");
-    } else {
-        console.log("Signature verification failed");
-    }
-    res.end();
-});
-
-function sendTx() {
+async function sendTxn() {
     var myAddress = "ADDRESS_THAT_SENDS_TRANSACTION";
     var privateKey = Buffer.from("YOUR_PRIVATE_KEY", "hex");
     var toAddress = "ADRESS_TO_SEND_TRANSACTION";

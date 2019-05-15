@@ -34,7 +34,7 @@ contract ERC1155MixedFungibleMintableBurnable is ERC1155MixedFungible {
     }
 
     // This function only creates the type.
-    function create(string calldata _uri, bool   _isNF) external returns(uint256 _type) {
+    function create(string calldata _uri, bool _isNF) external returns(uint256 _type) {
 
         // Store the type in the upper 128 bits
         // todo: what happens to types and index in each type when nonce number is greater than 128 bits?

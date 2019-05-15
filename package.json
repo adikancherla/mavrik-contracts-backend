@@ -22,6 +22,8 @@
     "ethereumjs-tx": "^1.3.7",
     "express": "^4.16.4",
     "openpgp": "^4.5.1",
-    "web3": "^1.0.0-beta.55"
+    "web3": "^1.0.0-beta.55",
+    "zos": "^2.2.3",
+    "bignumber.js": "^4.1.0"
   }
 }
