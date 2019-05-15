@@ -4,4 +4,5 @@ build
 .env
 .idea
 
+zos.dev-*.json
 .zos.session

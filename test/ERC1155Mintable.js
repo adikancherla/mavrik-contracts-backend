@@ -423,7 +423,7 @@ contract("ERC1155Mintable - tests all core 1155 functionality.", accounts => {
             web3.utils.fromAscii("SomethingMeaningfull")
         );
 
-        // ToDo restore state
+        // ToDo: restore state
     });
 
     it("safeBatchTransferFrom throws with insuficient balance", async () => {
@@ -581,7 +581,7 @@ contract("ERC1155Mintable - tests all core 1155 functionality.", accounts => {
         );
     });
 
-    // ToDo test event setApprovalForAll
+    // ToDo: test event setApprovalForAll
     it("safeBatchTransferFrom by operator with enough balance", async () => {
         function verifySetApproval(tx, operator, owner, approved) {
             for (let l of tx.logs) {

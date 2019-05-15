@@ -2,25 +2,19 @@ pragma solidity ^0.5.0;
 
 import "openzeppelin-eth/contracts/math/SafeMath.sol";
 import "openzeppelin-eth/contracts/utils/Address.sol";
+import "openzeppelin-eth/contracts/introspection/IERC165.sol";
 import "./IERC1155TokenReceiver.sol";
 import "./IERC1155.sol";
 
 // A sample implementation of core ERC1155 function.
-contract ERC1155 is IERC1155, ERC165
+contract ERC1155 is IERC1155, IERC165
 {
     using SafeMath for uint256;
     using Address for address;
 
     bytes4 constant public ERC1155_RECEIVED       = 0xf23a6e61;
     bytes4 constant public ERC1155_BATCH_RECEIVED = 0xbc197c81;
-
-    // id => (owner => balance)
-    mapping (uint256 => mapping(address => uint256)) internal balances;
-
-    // owner => (operator => approved)
-    mapping (address => mapping(address => bool)) internal operatorApproval;
-
-/////////////////////////////////////////// ERC165 //////////////////////////////////////////////
+    /////////////////////////////////////////// ERC165 //////////////////////////////////////////////
 
     /*
         bytes4(keccak256('supportsInterface(bytes4)'));
@@ -36,6 +30,12 @@ contract ERC1155 is IERC1155, ERC165
         bytes4(keccak256("isApprovedForAll(address,address)"));
     */
     bytes4 constant private INTERFACE_SIGNATURE_ERC1155 = 0xd9b67a26;
+
+    // id => (owner => balance)
+    mapping (uint256 => mapping(address => uint256)) internal balances;
+
+    // owner => (operator => approved)
+    mapping (address => mapping(address => bool)) internal operatorApproval;
 
     function supportsInterface(bytes4 _interfaceId)
     public
