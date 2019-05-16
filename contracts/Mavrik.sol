@@ -6,8 +6,10 @@ import "openzeppelin-eth/contracts/utils/Address.sol";
 import "openzeppelin-eth/contracts/introspection/IERC165.sol";
 import "./IERC1155TokenReceiver.sol";
 import "./IERC1155.sol";
+import "openzeppelin-eth/contracts/ownership/Ownable.sol";
+import "openzeppelin-eth/contracts/lifecycle/Pausable.sol";
 
-contract Mavrik is IERC1155, IERC165, Initializable {
+contract Mavrik is IERC1155, IERC165, Pausable, Ownable {
 
 	using SafeMath for uint256;
     using Address for address;
@@ -30,7 +32,7 @@ contract Mavrik is IERC1155, IERC165, Initializable {
     /*
         bytes4(keccak256('supportsInterface(bytes4)'));
     */
-    bytes4 constant private INTERFACE_SIGNATURE_ERC165 = 0x01ffc9a7;
+    bytes4 constant public INTERFACE_SIGNATURE_ERC165 = 0x01ffc9a7;
 
     /*
         bytes4(keccak256("safeTransferFrom(address,address,uint256,uint256,bytes)")) ^
@@ -40,7 +42,7 @@ contract Mavrik is IERC1155, IERC165, Initializable {
         bytes4(keccak256("setApprovalForAll(address,bool)")) ^
         bytes4(keccak256("isApprovedForAll(address,address)"));
     */
-    bytes4 constant private INTERFACE_SIGNATURE_ERC1155 = 0xd9b67a26;
+    bytes4 constant public INTERFACE_SIGNATURE_ERC1155 = 0xd9b67a26;
 
 	// metadata
     string public name;
@@ -85,9 +87,11 @@ contract Mavrik is IERC1155, IERC165, Initializable {
     }
 
     function initialize() initializer public {
+    	Pausable.initialize(msg.sender);
+    	Ownable.initialize(msg.sender);
         name = "Mavrik";
     	symbol = "MAV";
-    	version = "1.0.0";
+    	version = "1.0.1";
     }
 
     function supportsInterface(bytes4 _interfaceId)
