@@ -31,6 +31,7 @@ firebase.initializeApp({
 
 const rootRef = firebase.firestore().collection(process.env.FIREBASE_ROOT_REF);
 const huntersRef = rootRef.doc(process.env.FIREBASE_HUNTERS_REF);
+const huntersKeysRef = huntersRef.collection(process.env.FIREBASE_KEYS_REF);
 
 async function verifyPgpSignature(signature, publicKey) {
     try {
@@ -87,7 +88,6 @@ async function sendSatTreasureKeyNFT(hunter) {
 async function addToFirebase(reqBody) {
     let finder = reqBody.hunter;
     let key = reqBody.key;
-    let data = {};
     let keyData = {
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -98,10 +98,18 @@ async function addToFirebase(reqBody) {
         address: finder
     };
     keyData.finders[finder] = finderData;
-    data[key] = keyData;
 
-    let result = await huntersRef.set(data, { merge: true });
+    let result = await huntersKeysRef.doc(key).set(keyData, { merge: true });
     return result;
+}
+
+async function checkIfKeyAlreadyFound(reqBody) {
+    let key = reqBody.key;
+    let keyDoc = await huntersKeysRef.doc(key).get();
+    if (keyDoc.exists) {
+        return true;
+    }
+    return false;
 }
 
 app.post("/verify", async function(req, res) {
@@ -113,19 +121,33 @@ app.post("/verify", async function(req, res) {
         fs.readFileSync("files/test-pgp-public.pem")
     );
     if (verified) {
-        // add to firebase
-        console.log("Verified key. Adding to firebase");
-        let result = await addToFirebase(req.body);
-        console.log(result);
-        res.status(200).send(result);
-
-        //send eth txn
-        console.log("Sending ETH txn");
-        let resp = await sendSatTreasureKeyNFT(hunter);
-        if (resp && resp.transactionHash) {
-            console.log(resp.transactionHash);
+        console.log("Key verified. Checking if it is already found");
+        // first check if key already found
+        let keyFound = await checkIfKeyAlreadyFound(req.body);
+        if (keyFound) {
+            res.status(500).send("Someone already found this key");
+            return;
         } else {
-            console.log("Ethereum txn error occured", resp);
+            // if not add to firebase
+            console.log("Not found. Adding to firebase");
+            let result = await addToFirebase(req.body);
+            if (result) {
+                res.status(200).send(
+                    "Hunter recorded. NFT will be granted soon"
+                );
+                //send eth txn
+                console.log("Sending ETH txn");
+                let resp = await sendSatTreasureKeyNFT(hunter);
+                if (resp && resp.transactionHash) {
+                    console.log(resp.transactionHash);
+                } else {
+                    console.log("Ethereum txn error occured", resp);
+                }
+            } else {
+                res.status(500).send(
+                    "Recording key hunter failed. No NFT granted"
+                );
+            }
         }
     } else {
         console.log("Key verification failed");
