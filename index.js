@@ -5,6 +5,7 @@ const app = express();
 const crypto = require("crypto");
 const fs = require("fs");
 const openpgp = require("openpgp");
+const contract = require("truffle-contract");
 require("dotenv").config();
 
 app.use(express.json());
@@ -13,6 +14,104 @@ const satoshiTreasurePubKey = fs.readFileSync(
     "files/satoshiTreasurePublic.pem",
     "utf-8"
 );
+const mavrikJson = require("./build/Mavrik.json");
+
+const port = 3000 || process.env.PORT;
+const web3Provider = new web3.providers.HttpProvider(process.env.WEB3_PROVIDER);
+const web3js = new web3(web3Provider, undefined, {
+    transactionConfirmationBlocks: 1
+});
+
+async function verifyPgpSignature(signature, publicKey) {
+    try {
+        if (!publicKey) {
+            publicKey = satoshiTreasurePubKey;
+        }
+        options = {
+            message: await openpgp.cleartext.readArmored(signature), // parse armored message
+            publicKeys: (await openpgp.key.readArmored(publicKey)).keys // for verification
+        };
+
+        let verified = await openpgp.verify(options);
+        let valid = verified.signatures[0].valid;
+        if (valid) {
+            console.log("signed by " + verified.signatures[0].keyid.toHex());
+            return true;
+        }
+    } catch (err) {
+        console.log("error occured", err);
+    }
+}
+
+async function sendSatTreasureKeyNFT(hunter) {
+    const fromAddress = process.env.SATOSHI_TREASURER_APPROVER_ADDR;
+    const privateKey = Buffer.from(
+        process.env.SATOSHI_TREASURER_APPROVER_PRIV_KEY,
+        "hex"
+    );
+    const contractAddress = process.env.MAVRIK_CONTRACT_ADDR;
+    const mavrik = new web3js.eth.Contract(mavrikJson.abi, contractAddress);
+    // get transaction count, later will used as nonce
+    let count = await web3js.eth.getTransactionCount(fromAddress, "pending");
+    let rawTransaction = {
+        from: fromAddress,
+        gasPrice: web3js.utils.toHex(20 * 1e9),
+        gasLimit: web3js.utils.toHex(210000),
+        to: contractAddress,
+        data: mavrik.methods
+            .mintNonFungible(process.env.SATOSHI_TREASURE_KEY_NFT_TYPE, [
+                hunter
+            ])
+            .encodeABI(),
+        nonce: web3js.utils.toHex(count)
+    };
+    //console.log(rawTransaction);
+    let transaction = new Tx(rawTransaction);
+    transaction.sign(privateKey);
+    let txResult = await web3js.eth.sendSignedTransaction(
+        "0x" + transaction.serialize().toString("hex")
+    );
+    return txResult;
+
+    //const mavrik = contract(mavrikJson);
+    //console.log(mavrik);
+    //console.log(web3Provider);
+    // mavrik.setProvider(web3Provider);
+
+    // const instance = await mavrik.at(contractAddress);
+    // console.log(instance);
+    // const result = await instance.mintNonFungible(
+    //     process.env.SATOSHI_TREASURE_KEY_NFT_TYPE,
+    //     [hunter],
+    //     { from: fromAddress }
+    // );
+    // console.log(result);
+    // return result;
+}
+
+app.post("/verify", async function(req, res) {
+    let signature = req.body.data;
+    let hunter = req.body.hunter;
+    //let verified = await verifyPgpSignature(signature, satoshiTreasurePubKey);
+    let verified = await verifyPgpSignature(
+        signature,
+        fs.readFileSync("files/test-pgp-public.pem")
+    );
+    if (verified) {
+        console.log("Verified key. Sending ETH txn");
+        let resp = await sendSatTreasureKeyNFT(hunter);
+        if (resp && resp.transactionHash) {
+            res.status(200).send(resp.transactionHash);
+        } else {
+            res.status(500).send("Ethereum txn error occured", resp);
+        }
+    } else {
+        console.log("Key verification failed");
+        res.status(500).send("Key verification failed");
+    }
+});
+
+app.listen(port, () => console.log("Listening on port " + port));
 
 // const signAndVerifyPGP = async () => {
 //     try {
@@ -78,103 +177,3 @@ const satoshiTreasurePubKey = fs.readFileSync(
 
 //signAndVerifyRSA();
 //signAndVerifyPGP();
-
-app.post("/verify", async function(req, res) {
-    let signature = req.body.data;
-    //let verified = await verifyPgpSignature(signature, satoshiTreasurePubKey);
-    let verified = await verifyPgpSignature(
-        signature,
-        fs.readFileSync("files/test-pgp-public.pem")
-    );
-    if (verified) {
-        console.log("Verified signature. Sending ETH txn");
-        let resp = await sendTxn();
-        res.status(200).send(resp);
-    } else {
-        console.log("Signature verification failed");
-    }
-    res.status(500).send("Internal Server Error");
-});
-
-async function verifyPgpSignature(signature, publicKey) {
-    try {
-        if (!publicKey) {
-            publicKey = satoshiTreasurePubKey;
-        }
-        options = {
-            message: await openpgp.cleartext.readArmored(signature), // parse armored message
-            publicKeys: (await openpgp.key.readArmored(publicKey)).keys // for verification
-        };
-
-        let verified = await openpgp.verify(options);
-        let valid = verified.signatures[0].valid;
-        if (valid) {
-            console.log("signed by " + verified.signatures[0].keyid.toHex());
-            return true;
-        }
-    } catch (err) {
-        console.log("error occured", err);
-    }
-}
-
-const ethMainnetEndPoint =
-    "https://mainnet.infura.io/v3/" + process.env.INFURA_PROJECT_ID;
-
-const ethKovanEndPoint =
-    "https://kovan.infura.io/v3/" + process.env.INFURA_PROJECT_ID;
-
-//Infura HttpProvider Endpoint
-//web3js = new web3(new web3.providers.HttpProvider(ethKovanEndPoint));
-//web3js = new web3(new web3.providers.HttpProvider(ethMainnetEndPoint));
-options = {};
-web3js = new web3(new web3.providers.HttpProvider("http://127.0.0.1:7545"));
-
-async function sendTxn() {
-    var myAddress = "ADDRESS_THAT_SENDS_TRANSACTION";
-    var privateKey = Buffer.from("YOUR_PRIVATE_KEY", "hex");
-    var toAddress = "ADRESS_TO_SEND_TRANSACTION";
-
-    //contract abi is the array that you can get from the ethereum wallet or etherscan
-    var contractABI = YOUR_CONTRACT_ABI;
-    var contractAddress = "YOUR_CONTRACT_ADDRESS";
-    //creating contract object
-    var contract = new web3js.eth.Contract(contractABI, contractAddress);
-
-    var count;
-    // get transaction count, later will used as nonce
-    web3js.eth.getTransactionCount(myAddress).then(function(v) {
-        console.log("Count: " + v);
-        count = v;
-        var amount = web3js.utils.toHex(1e16);
-        //creating raw tranaction
-        var rawTransaction = {
-            from: myAddress,
-            gasPrice: web3js.utils.toHex(20 * 1e9),
-            gasLimit: web3js.utils.toHex(210000),
-            to: contractAddress,
-            value: "0x0",
-            data: contract.methods.transfer(toAddress, amount).encodeABI(),
-            nonce: web3js.utils.toHex(count)
-        };
-        console.log(rawTransaction);
-        //creating tranaction via ethereumjs-tx
-        var transaction = new Tx(rawTransaction);
-        //signing transaction with private key
-        transaction.sign(privateKey);
-        //sending transacton via web3js module
-        web3js.eth
-            .sendSignedTransaction(
-                "0x" + transaction.serialize().toString("hex")
-            )
-            .on("transactionHash", console.log);
-
-        contract.methods
-            .balanceOf(myAddress)
-            .call()
-            .then(function(balance) {
-                console.log(balance);
-            });
-    });
-}
-
-app.listen(3000, () => console.log("Listening on port 3000!"));
