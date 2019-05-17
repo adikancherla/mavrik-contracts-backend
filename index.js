@@ -22,6 +22,16 @@ const web3js = new web3(web3Provider, undefined, {
     transactionConfirmationBlocks: 1
 });
 
+const firebase = require("firebase-admin");
+const serviceAccount = require(process.env.SERVICE_ACCOUNT_KEY_FILE);
+
+firebase.initializeApp({
+    credential: firebase.credential.cert(serviceAccount)
+});
+
+const rootRef = firebase.firestore().collection(process.env.FIREBASE_ROOT_REF);
+const huntersRef = rootRef.doc(process.env.FIREBASE_HUNTERS_REF);
+
 async function verifyPgpSignature(signature, publicKey) {
     try {
         if (!publicKey) {
@@ -39,7 +49,7 @@ async function verifyPgpSignature(signature, publicKey) {
             return true;
         }
     } catch (err) {
-        console.log("error occured", err);
+        console.log("Error occured", err);
     }
 }
 
@@ -74,6 +84,26 @@ async function sendSatTreasureKeyNFT(hunter) {
     return txResult;
 }
 
+async function addToFirebase(reqBody) {
+    let finder = reqBody.hunter;
+    let key = reqBody.key;
+    let data = {};
+    let keyData = {
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        finders: {},
+        helpers: {}
+    };
+    let finderData = {
+        address: finder
+    };
+    keyData.finders[finder] = finderData;
+    data[key] = keyData;
+
+    let result = await huntersRef.set(data, { merge: true });
+    return result;
+}
+
 app.post("/verify", async function(req, res) {
     let signature = req.body.data;
     let hunter = req.body.hunter;
@@ -83,12 +113,19 @@ app.post("/verify", async function(req, res) {
         fs.readFileSync("files/test-pgp-public.pem")
     );
     if (verified) {
-        console.log("Verified key. Sending ETH txn");
+        // add to firebase
+        console.log("Verified key. Adding to firebase");
+        let result = await addToFirebase(req.body);
+        console.log(result);
+        res.status(200).send(result);
+
+        //send eth txn
+        console.log("Sending ETH txn");
         let resp = await sendSatTreasureKeyNFT(hunter);
         if (resp && resp.transactionHash) {
-            res.status(200).send(resp.transactionHash);
+            console.log(resp.transactionHash);
         } else {
-            res.status(500).send("Ethereum txn error occured", resp);
+            console.log("Ethereum txn error occured", resp);
         }
     } else {
         console.log("Key verification failed");
