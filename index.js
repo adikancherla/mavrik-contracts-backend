@@ -72,21 +72,6 @@ async function sendSatTreasureKeyNFT(hunter) {
         "0x" + transaction.serialize().toString("hex")
     );
     return txResult;
-
-    //const mavrik = contract(mavrikJson);
-    //console.log(mavrik);
-    //console.log(web3Provider);
-    // mavrik.setProvider(web3Provider);
-
-    // const instance = await mavrik.at(contractAddress);
-    // console.log(instance);
-    // const result = await instance.mintNonFungible(
-    //     process.env.SATOSHI_TREASURE_KEY_NFT_TYPE,
-    //     [hunter],
-    //     { from: fromAddress }
-    // );
-    // console.log(result);
-    // return result;
 }
 
 app.post("/verify", async function(req, res) {
@@ -112,68 +97,3 @@ app.post("/verify", async function(req, res) {
 });
 
 app.listen(port, () => console.log("Listening on port " + port));
-
-// const signAndVerifyPGP = async () => {
-//     try {
-//         const pubkey = fs.readFileSync("files/test-pgp-public.pem", "utf-8");
-//         const privkey = fs.readFileSync("files/test-pgp-private.pem", "utf-8");
-//         //sign the hash of the message 'Apple' instead of clear text
-//         const msg = crypto
-//             .createHash("sha256")
-//             .update("Apple")
-//             .digest("hex");
-
-//         //sign
-//         let privKeyObj = (await openpgp.key.readArmored(privkey)).keys[0];
-//         let options = {
-//             message: openpgp.cleartext.fromText(msg), // CleartextMessage or Message object
-//             privateKeys: [privKeyObj] // for signing
-//         };
-//         let signature = await openpgp.sign(options);
-//         //console.log(signature);
-
-//         //verify
-//         let verified = await verifyPgpSignature(signature.data, pubkey);
-//         if (verified) {
-//             console.log("Verified!!");
-//         } else {
-//             console.log("verification failed");
-//         }
-//     } catch (err) {
-//         console.log("error occured", err);
-//     }
-// };
-
-// const signAndVerifyRSA = () => {
-//     const privateKey = fs.readFileSync("files/test-rsa-private.pem", "utf-8");
-//     const publicKey = fs.readFileSync("files/test-rsa-public.pem", "utf-8");
-//     const message = "Hello world";
-
-//     const signer = crypto.createSign("sha256");
-//     signer.update(message);
-//     signer.end();
-
-//     const signature = signer.sign(privateKey);
-//     const signatureHex = signature.toString("hex");
-
-//     const verifier = crypto.createVerify("sha256");
-//     verifier.update(message);
-//     verifier.end();
-
-//     const verified = verifier.verify(publicKey, signature);
-
-//     console.log(
-//         JSON.stringify(
-//             {
-//                 message: message,
-//                 signature: signatureHex,
-//                 verified: verified
-//             },
-//             null,
-//             2
-//         )
-//     );
-// };
-
-//signAndVerifyRSA();
-//signAndVerifyPGP();
