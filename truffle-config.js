@@ -1,4 +1,5 @@
 const path = require("path");
+const HDWalletProvider = require("truffle-hdwallet-provider");
 require("dotenv").config();
 
 module.exports = {
@@ -12,13 +13,13 @@ module.exports = {
       host: "127.0.0.1",
       port: 8545,
       network_id: "*",
-      gas: 44650300
+      gas: 80000000
     },
     development: {
       host: "127.0.0.1",
       port: 7545,
       network_id: "*",
-      gas: 44650300
+      gas: 80000000
     },
     ropsten: {
       provider: function() {
@@ -28,7 +29,7 @@ module.exports = {
         );
       },
       network_id: "3",
-      gas: 4465030,
+      gas: 8000000,
       gasPrice: 10000000000
     },
     kovan: {
@@ -39,14 +40,14 @@ module.exports = {
         );
       },
       network_id: "42",
-      gas: 4465030,
+      gas: 8000000,
       gasPrice: 10000000000
     },
     rinkeby: {
       provider: () =>
         new HDWalletProvider(process.env.MNENOMIC, process.env.WEB3_PROVIDER),
       network_id: 4,
-      gas: 3000000,
+      gas: 8000000,
       gasPrice: 10000000000
     },
     // main ethereum network(mainnet)
@@ -54,7 +55,7 @@ module.exports = {
       provider: () =>
         new HDWalletProvider(process.env.MNENOMIC, process.env.WEB3_PROVIDER),
       network_id: 1,
-      gas: 3000000,
+      gas: 8000000,
       gasPrice: 10000000000
     }
   }

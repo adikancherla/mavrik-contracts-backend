@@ -96,7 +96,7 @@ contract Mavrik is IERC1155, IERC165, Pausable, Ownable {
     	Ownable.initialize(_from);
         name = "Mavrik";
     	symbol = "MAV";
-    	version = "1.0.2";
+    	version = "0.1.0";
     }
 
     function supportsInterface(bytes4 _interfaceId)
