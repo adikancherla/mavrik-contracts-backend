@@ -29,7 +29,7 @@ module.exports = {
         );
       },
       network_id: "3",
-      gas: 8000000,
+      gas: 6000000,
       gasPrice: 10000000000
     },
     kovan: {
@@ -57,6 +57,18 @@ module.exports = {
       network_id: 1,
       gas: 8000000,
       gasPrice: 10000000000
+    }
+  },
+  compilers: {
+    solc: {
+      version: "0.5.0",
+      docker: true,
+      settings: {
+        optimizer: {
+          enabled: true,
+          runs: 200
+        }
+      }
     }
   }
 };
