@@ -65,6 +65,11 @@ contract Mavrik is IERC1155, IERC165, Pausable, Ownable {
     // dev fee for token actions, if exists
     mapping (uint256 => uint256) public devFee;
 
+    modifier senderOrApprovedOnly(address _from) {
+        require(_from == msg.sender || operatorApproval[_from][msg.sender] == true, "Need operator approval for 3rd party transfers");
+        _;
+    }
+
     modifier creatorOnly(uint256 _id) {
         require(creators[_id] == msg.sender);
         _;
@@ -86,12 +91,12 @@ contract Mavrik is IERC1155, IERC165, Pausable, Ownable {
         _;
     }
 
-    function initialize() initializer public {
-    	Pausable.initialize(msg.sender);
-    	Ownable.initialize(msg.sender);
+    function initialize(address _from) initializer public senderOrApprovedOnly(_from) {
+    	Pausable.initialize(_from);
+    	Ownable.initialize(_from);
         name = "Mavrik";
     	symbol = "MAV";
-    	version = "1.0.1";
+    	version = "1.0.2";
     }
 
     function supportsInterface(bytes4 _interfaceId)
@@ -106,7 +111,7 @@ contract Mavrik is IERC1155, IERC165, Pausable, Ownable {
          return false;
     }
 
-    // Only to make code clearer. Should not be functions
+    // todo: Are these functions pure or view
     function isNonFungible(uint256 _id) public pure returns(bool) {
         return _id & TYPE_NF_BIT == TYPE_NF_BIT;
     }
@@ -132,10 +137,9 @@ contract Mavrik is IERC1155, IERC165, Pausable, Ownable {
     }
 
     // overide
-    function safeTransferFrom(address _from, address _to, uint256 _id, uint256 _value, bytes calldata _data) external {
+    function safeTransferFrom(address _from, address _to, uint256 _id, uint256 _value, bytes calldata _data) external senderOrApprovedOnly(_from) {
 
         require(_to != address(0x0), "cannot send to zero address");
-        require(_from == msg.sender || operatorApproval[_from][msg.sender] == true, "Need operator approval for 3rd party transfers.");
         if (_to.isContract()) {
             require(IERC1155TokenReceiver(_to).onERC1155Received(msg.sender, _from, _id, _value, _data) == ERC1155_RECEIVED);
         }
@@ -156,31 +160,28 @@ contract Mavrik is IERC1155, IERC165, Pausable, Ownable {
     }
 
     // overide
-    function safeBatchTransferFrom(address _from, address _to, uint256[] calldata _ids, uint256[] calldata _values, bytes calldata _data) external {
+    function safeBatchTransferFrom(address _from, address _to, uint256[] calldata _ids, uint256[] calldata _values, bytes calldata _data) external senderOrApprovedOnly(_from) {
 
         require(_to != address(0x0), "cannot send to zero address");
         require(_ids.length == _values.length, "Array length must match");
         if (_to.isContract()) {
             require(IERC1155TokenReceiver(_to).onERC1155BatchReceived(msg.sender, _from, _ids, _values, _data) == ERC1155_BATCH_RECEIVED);
         }
-        // Only supporting a global operator approval allows us to do only 1 check and not to touch storage to handle allowances.
-        require(_from == msg.sender || operatorApproval[_from][msg.sender] == true, "Need operator approval for 3rd party transfers.");
 
         for (uint256 i = 0; i < _ids.length; ++i) {
             // Cache value to local variable to reduce read costs.
             uint256 id = _ids[i];
-            uint256 value = _values[i];
 
             if (isNonFungible(id)) {
                 require(nfOwners[id] == _from);
                 nfOwners[id] = _to;
                 // You could keep balance of NF type in base type id like so:
                 uint256 baseType = getNonFungibleBaseType(id);
-                balances[baseType][_from] = balances[baseType][_from].sub(value);
-                balances[baseType][_to]   = balances[baseType][_to].add(value);
+                balances[baseType][_from] = balances[baseType][_from].sub(_values[i]);
+                balances[baseType][_to]   = balances[baseType][_to].add(_values[i]);
             } else {
-                balances[id][_from] = balances[id][_from].sub(value);
-                balances[id][_to]   = value.add(balances[id][_to]);
+                balances[id][_from] = balances[id][_from].sub(_values[i]);
+                balances[id][_to]   = _values[i].add(balances[id][_to]);
             }
         }
 
@@ -356,7 +357,7 @@ contract Mavrik is IERC1155, IERC165, Pausable, Ownable {
    * @param _id      Token id to burn
    * @param _amount  The amount to be burned
    */
-	function burnFungible(address _from, uint256 _id, uint256 _amount) external {    
+	function burnFungible(address _from, uint256 _id, uint256 _amount) external senderOrApprovedOnly(_from) {    
 	    //Substract _amount
 	    balances[_id][_from] = balances[_id][_from].sub(_amount);
 
@@ -370,7 +371,7 @@ contract Mavrik is IERC1155, IERC165, Pausable, Ownable {
 	   * @param _ids      Array of token ids to burn
 	   * @param _amounts  Array of the amount to be burned
 	   */
-	function batchBurnFungible(address _from, uint256[] calldata _ids, uint256[] calldata _amounts) external {
+	function batchBurnFungible(address _from, uint256[] calldata _ids, uint256[] calldata _amounts) external senderOrApprovedOnly(_from) {
 	    require(_ids.length == _amounts.length, "id and amount array lengths must match");
 
 	     // Executing all minting
@@ -383,7 +384,7 @@ contract Mavrik is IERC1155, IERC165, Pausable, Ownable {
 	    emit TransferBatch(msg.sender, _from, address(0x0), _ids, _amounts);
 	}
 
-	function burnNonFungible(address _from, uint256 _id) external {
+	function burnNonFungible(address _from, uint256 _id) external senderOrApprovedOnly(_from) {
 	    // get base type and subtract balance
 	    uint256 baseType = getNonFungibleBaseType(_id);
 	    balances[baseType][_from] = balances[baseType][_from].sub(1);
@@ -394,7 +395,7 @@ contract Mavrik is IERC1155, IERC165, Pausable, Ownable {
 	    emit TransferSingle(msg.sender, _from, address(0x0), _id, 1);
 	}
 
-	function batchBurnNonFungible(address _from, uint256[] calldata _ids) external {
+	function batchBurnNonFungible(address _from, uint256[] calldata _ids) external senderOrApprovedOnly(_from) {
 	    // get base type and subtract balance
 	    for (uint256 i = 0; i < _ids.length; i++) {
 	        uint256 baseType = getNonFungibleBaseType(_ids[i]);
