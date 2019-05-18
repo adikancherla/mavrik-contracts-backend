@@ -28,8 +28,8 @@ module.exports = {
           process.env.WEB3_PROVIDER
         );
       },
-      network_id: "3",
-      gas: 6000000,
+      network_id: 3,
+      gas: 8000000,
       gasPrice: 10000000000
     },
     kovan: {
@@ -39,7 +39,7 @@ module.exports = {
           process.env.WEB3_PROVIDER
         );
       },
-      network_id: "42",
+      network_id: 42,
       gas: 8000000,
       gasPrice: 10000000000
     },
