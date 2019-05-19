@@ -82,6 +82,7 @@ async function sendSatTreasureKeyNFT(hunter) {
     let txResult = await web3js.eth.sendSignedTransaction(
         "0x" + transaction.serialize().toString("hex")
     );
+    console.log(txResult);
     return txResult;
 }
 
