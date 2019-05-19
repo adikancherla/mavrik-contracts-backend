@@ -1,5 +1,6 @@
 const path = require("path");
 const HDWalletProvider = require("truffle-hdwallet-provider");
+const PrivateKeyProvider = require("truffle-privatekey-provider");
 require("dotenv").config();
 
 module.exports = {
@@ -53,7 +54,7 @@ module.exports = {
     // main ethereum network(mainnet)
     main: {
       provider: () =>
-        new HDWalletProvider(process.env.MNENOMIC, process.env.WEB3_PROVIDER),
+        new PrivateKeyProvider(process.env.MAINNET_PRIV_KEY, process.env.WEB3_PROVIDER),
       network_id: 1,
       gas: 8000000,
       gasPrice: 10000000000
