@@ -6,10 +6,9 @@ import "openzeppelin-eth/contracts/utils/Address.sol";
 import "openzeppelin-eth/contracts/introspection/IERC165.sol";
 import "./IERC1155TokenReceiver.sol";
 import "./IERC1155.sol";
-import "openzeppelin-eth/contracts/ownership/Ownable.sol";
 import "openzeppelin-eth/contracts/lifecycle/Pausable.sol";
 
-contract Mavrik is IERC1155, IERC165, Pausable, Ownable {
+contract Mavrik is IERC1155, IERC165, Pausable {
 
 	using SafeMath for uint256;
     using Address for address;
@@ -93,7 +92,6 @@ contract Mavrik is IERC1155, IERC165, Pausable, Ownable {
 
     function initialize(address _from) initializer public senderOrApprovedOnly(_from) {
     	Pausable.initialize(_from);
-    	Ownable.initialize(_from);
         name = "Mavrik";
     	symbol = "MAV";
     	version = "0.1.0";
