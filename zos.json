@@ -3,6 +3,6 @@
   "name": "mavrik",
   "version": "0.1.0",
   "contracts": {
-    "Mavrik": "Mavrik"
+    "MavrikNFTs": "MavrikNFTs"
   }
 }
