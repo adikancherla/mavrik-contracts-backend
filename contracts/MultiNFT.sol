@@ -22,6 +22,24 @@ library Address {
     }
 }
 
+library Strings {
+
+    function lowerCase(string memory base) internal pure returns (string memory) {
+        bytes memory baseBytes = bytes(base);
+        for (uint i = 0; i < baseBytes.length; i++) {
+            baseBytes[i] = _lowerCase(baseBytes[i]);
+        }
+        return string(baseBytes);
+    }
+
+    function _lowerCase(bytes1 _b1) private pure returns (bytes1) {
+        if (_b1 >= 0x41 && _b1 <= 0x5A) {
+            return bytes1(uint8(_b1)+32);
+        }
+        return _b1;
+    }
+}
+
 /**
  * @title Roles
  * @dev Library for managing addresses assigned to a Role.
@@ -35,8 +53,8 @@ library Roles {
      * @dev give an account access to this role
      */
     function add(Role storage role, address account) internal {
-        require(account != address(0));
-        require(!has(role, account));
+        require(account != address(0), "Account cannot be 0 address");
+        require(!has(role, account), "Account already has this role");
 
         role.bearer[account] = true;
     }
@@ -45,8 +63,8 @@ library Roles {
      * @dev remove an account's access to this role
      */
     function remove(Role storage role, address account) internal {
-        require(account != address(0));
-        require(has(role, account));
+        require(account != address(0), "Account cannot be 0 address");
+        require(has(role, account), "Account does not have this role");
 
         role.bearer[account] = false;
     }
@@ -56,7 +74,7 @@ library Roles {
      * @return bool
      */
     function has(Role storage role, address account) internal view returns (bool) {
-        require(account != address(0));
+        require(account != address(0), "Account cannot be zero address");
         return role.bearer[account];
     }
 }
@@ -192,7 +210,7 @@ contract PauserRole is Initializable {
     }
 
     modifier onlyPauser() {
-        require(isPauser(msg.sender));
+        require(isPauser(msg.sender), "Sender is not a pauser");
         _;
     }
 
@@ -245,7 +263,7 @@ contract Pausable is Initializable, PauserRole {
      * @dev Modifier to make a function callable only when the contract is not paused.
      */
     modifier whenNotPaused() {
-        require(!_paused);
+        require(!_paused, "Contract paused");
         _;
     }
 
@@ -253,7 +271,7 @@ contract Pausable is Initializable, PauserRole {
      * @dev Modifier to make a function callable only when the contract is paused.
      */
     modifier whenPaused() {
-        require(_paused);
+        require(_paused, "Contract not paused");
         _;
     }
 
@@ -457,8 +475,8 @@ contract ERC721 is Initializable, ERC165, IERC721 {
      */
     function approve(address to, uint256 tokenId) public {
         address owner = ownerOf(tokenId);
-        require(to != owner);
-        require(msg.sender == owner || isApprovedForAll(owner, msg.sender));
+        require(to != owner, "Cannot approve owner");
+        require(msg.sender == owner || isApprovedForAll(owner, msg.sender), "Sender is not owner or not approved by owner");
 
         _tokenApprovals[tokenId] = to;
         emit Approval(owner, to, tokenId);
@@ -471,7 +489,7 @@ contract ERC721 is Initializable, ERC165, IERC721 {
      * @return address currently approved for the given token ID
      */
     function getApproved(uint256 tokenId) public view returns (address) {
-        require(_exists(tokenId));
+        require(_exists(tokenId), "Token does not exist");
         return _tokenApprovals[tokenId];
     }
 
@@ -482,7 +500,7 @@ contract ERC721 is Initializable, ERC165, IERC721 {
      * @param approved representing the status of the approval to be set
      */
     function setApprovalForAll(address to, bool approved) public {
-        require(to != msg.sender);
+        require(to != msg.sender, "Cannot approve self");
         _operatorApprovals[msg.sender][to] = approved;
         emit ApprovalForAll(msg.sender, to, approved);
     }
@@ -506,7 +524,7 @@ contract ERC721 is Initializable, ERC165, IERC721 {
      * @param tokenId uint256 ID of the token to be transferred
     */
     function transferFrom(address from, address to, uint256 tokenId) public {
-        require(_isApprovedOrOwner(msg.sender, tokenId));
+        require(_isApprovedOrOwner(msg.sender, tokenId), "Sender is neither the owner or an approved address");
 
         _transferFrom(from, to, tokenId);
     }
@@ -541,7 +559,7 @@ contract ERC721 is Initializable, ERC165, IERC721 {
      */
     function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory _data) public {
         transferFrom(from, to, tokenId);
-        require(_checkOnERC721Received(from, to, tokenId, _data));
+        require(_checkOnERC721Received(from, to, tokenId, _data), "ERC721 received message not returned");
     }
 
     /**
@@ -574,7 +592,7 @@ contract ERC721 is Initializable, ERC165, IERC721 {
      */
     function _mint(address to, uint256 tokenId) internal {
         require(to != address(0));
-        require(!_exists(tokenId));
+        require(!_exists(tokenId), "Token already exists");
 
         _tokenOwner[tokenId] = to;
         _ownedTokensCount[to] = _ownedTokensCount[to].add(1);
@@ -586,18 +604,18 @@ contract ERC721 is Initializable, ERC165, IERC721 {
      * @dev Internal function to burn a specific token
      * Reverts if the token does not exist
      * Deprecated, use _burn(uint256) instead.
-     * @param owner owner of the token to burn
+     * @param sender sender of the token to burn
      * @param tokenId uint256 ID of the token being burned
      */
-    function _burn(address owner, uint256 tokenId) internal {
-        require(ownerOf(tokenId) == owner);
+    function _burn(address sender, uint256 tokenId) internal {
+        require(ownerOf(tokenId) == sender, "Burner is not owner");
 
         _clearApproval(tokenId);
 
-        _ownedTokensCount[owner] = _ownedTokensCount[owner].sub(1);
+        _ownedTokensCount[sender] = _ownedTokensCount[sender].sub(1);
         _tokenOwner[tokenId] = address(0);
 
-        emit Transfer(owner, address(0), tokenId);
+        emit Transfer(sender, address(0), tokenId);
     }
 
     /**
@@ -617,7 +635,7 @@ contract ERC721 is Initializable, ERC165, IERC721 {
      * @param tokenId uint256 ID of the token to be transferred
     */
     function _transferFrom(address from, address to, uint256 tokenId) internal {
-        require(ownerOf(tokenId) == from);
+        require(ownerOf(tokenId) == from, "Cannot send token from non owner");
         require(to != address(0));
 
         _clearApproval(tokenId);
@@ -740,7 +758,7 @@ contract ERC721Metadata is Initializable, ERC165, ERC721, IERC721Metadata {
      * @param tokenId uint256 ID of the token to query
      */
     function tokenURI(uint256 tokenId) external view returns (string memory) {
-        require(_exists(tokenId));
+        require(_exists(tokenId), "Token does not exist");
         return _tokenURIs[tokenId];
     }
 
@@ -751,8 +769,8 @@ contract ERC721Metadata is Initializable, ERC165, ERC721, IERC721Metadata {
      * @param uri string URI to assign
      */
     function _setTokenURI(uint256 tokenId, string memory uri) internal {
-        require(_exists(tokenId));
-        require(bytes(_tokenURIs[tokenId]).length != 0);
+        require(_exists(tokenId), "Token does not exist");
+        require(bytes(_tokenURIs[tokenId]).length == 0, "URI already set");
         _tokenURIs[tokenId] = uri;
     }
 
@@ -777,12 +795,19 @@ contract ERC721Metadata is Initializable, ERC165, ERC721, IERC721Metadata {
 
 contract ERC721MultiMetadata is ERC721Metadata {
 
+    using Strings for string;
+
     uint256 constant _TYPE_MASK = uint256(uint128(~0)) << 128;
     // Token type to name mapping
     mapping(uint256 => string) private _names;
 
     // Token type to symbol mapping
     mapping(uint256 => string) private _symbols;
+
+    // name to type mapping
+    mapping(string => uint256) private _nameToType;
+
+    mapping(string => uint256) private _symbolToType;
 
     /**
      * @dev Gets the token name of the given tokenId
@@ -807,8 +832,9 @@ contract ERC721MultiMetadata is ERC721Metadata {
      * @return string representing the token symbol
      */
     function _setName(uint256 tokenType, string memory tokenName) internal {
-        require(bytes(_names[tokenType]).length != 0 && bytes(tokenName).length != 0);
+        require(bytes(_names[tokenType]).length == 0 && bytes(tokenName).length != 0, "Name is already set or supplied name is empty");
         _names[tokenType] = tokenName;
+        _nameToType[tokenName.lowerCase()] = tokenType;
     }
 
     /**
@@ -816,8 +842,25 @@ contract ERC721MultiMetadata is ERC721Metadata {
      * @return string representing the token symbol
      */
     function _setSymbol(uint256 tokenType, string memory tokenSymbol) internal {
-        require(bytes(_symbols[tokenType]).length != 0 && bytes(tokenSymbol).length != 0);
+        require(bytes(_symbols[tokenType]).length == 0 && bytes(tokenSymbol).length != 0, "Symbol is already set or supplied symbol is empty");
         _symbols[tokenType] = tokenSymbol;
+        _symbolToType[tokenSymbol.lowerCase()] = tokenType;
+    }
+
+    function nameExists(string memory tokenName) public view returns (bool) {
+        return _nameToType[tokenName.lowerCase()] > 0;
+    }
+
+    function symbolExists(string memory tokenSymbol) public view returns (bool) {
+        return _symbolToType[tokenSymbol.lowerCase()] > 0;
+    }
+
+    function tokenTypeOfName(string memory tokenName) public view returns (uint256) {
+        return _nameToType[tokenName.lowerCase()];
+    }
+
+    function tokenTypeOfSymbol(string memory tokenSymbol) public view returns (uint256) {
+        return _symbolToType[tokenSymbol.lowerCase()];
     }
 
     uint256[50] private ______gap;
@@ -865,7 +908,7 @@ contract ERC721Enumerable is Initializable, ERC165, ERC721, IERC721Enumerable {
      * @return uint256 token ID at the given index of the tokens list owned by the requested address
      */
     function tokenOfOwnerByIndex(address owner, uint256 index) public view returns (uint256) {
-        require(index < balanceOf(owner));
+        require(index < balanceOf(owner), "Index must be less than balance");
         return _ownedTokens[owner][index];
     }
 
@@ -884,7 +927,7 @@ contract ERC721Enumerable is Initializable, ERC165, ERC721, IERC721Enumerable {
      * @return uint256 token ID at the given index of the tokens list
      */
     function tokenByIndex(uint256 index) public view returns (uint256) {
-        require(index < totalSupply());
+        require(index < totalSupply(), "Index must be less than total supply");
         return _allTokens[index];
     }
 
@@ -1032,8 +1075,7 @@ contract MultiNFT is Initializable, ERC721, ERC721Enumerable, ERC721MultiMetadat
     // and the non-fungible index in the lower 128
     uint256 constant _INDEX_MASK = uint128(~0);
 
-    // token type
-    uint256 _tokenType;
+    uint256 _numTypesCreated;
 
     // type => (owner => balance)
     mapping (uint256 => mapping(address => uint256)) private _typeBalances;
@@ -1048,7 +1090,7 @@ contract MultiNFT is Initializable, ERC721, ERC721Enumerable, ERC721MultiMetadat
     mapping (uint256 => uint256) private _devFee;
 
     modifier creatorOnly(uint256 tokenType) {
-        require(_typeCreators[tokenType] == msg.sender);
+        require(_typeCreators[tokenType] == msg.sender, "Only token type creators can perform this operation");
         _;
     }
 
@@ -1068,36 +1110,56 @@ contract MultiNFT is Initializable, ERC721, ERC721Enumerable, ERC721MultiMetadat
         }
     }
 
+    function getTypeBalance(uint256 tokenType, address owner) public view returns (uint256) {
+        return _typeBalances[tokenType][owner];
+    }
+
+    function getCreator(uint256 tokenType) public view returns (address) {
+        return _typeCreators[tokenType];
+    }
+
+    function getMaxIndex(uint256 tokenType) public view returns (uint256) {
+        return _maxIndexOfType[tokenType];
+    }
+
+    function numTypesCreated() public view returns (uint256) {
+        return _numTypesCreated;
+    }
+
     // returns index of the given tokenId of this type
-    function getIndex(uint256 tokenId) public pure returns(uint256) {
+    function getIndex(uint256 tokenId) public pure returns (uint256) {
         return tokenId & _INDEX_MASK;
     }
 
     // returns the type of this tokenId
-    function getType(uint256 tokenId) public pure returns(uint256) {
+    function getType(uint256 tokenId) public pure returns (uint256) {
         return tokenId & _TYPE_MASK;
     }
 
     // This function only creates the type.
-    function createType(string calldata name, string calldata symbol, string calldata uri) external whenNotPaused returns(uint256) {
-        require(_tokenType < _TYPE_MASK);
+    function createType(string calldata name, string calldata symbol, string calldata uri) external whenNotPaused returns (uint256) {
+        require(_numTypesCreated < _TYPE_MASK, "Limit of max number of types reached");
+        require(!nameExists(name), "Name already exists");
+        require(!symbolExists(symbol), "Symbol already exists");
+
         // Store the type in the upper 128 bits
-        _tokenType = _tokenType.add(1);
+        _numTypesCreated = _numTypesCreated.add(1);
+        uint256 tokenType = (_numTypesCreated << 128);
 
         // This will allow restricted access to creators.
-        _typeCreators[_tokenType] = msg.sender;
+        _typeCreators[tokenType] = msg.sender;
+
+        _setName(tokenType, name);
+        _setSymbol(tokenType, symbol);
 
         // mint the first token of this type with index 0 and send to type creator
-        uint256 tokenId = _tokenType << 128;
-        _setName(_tokenType, name);
-        _setSymbol(_tokenType, symbol);
-        _mintWithTokenURI(msg.sender, tokenId, uri);
-        _typeBalances[_tokenType][msg.sender] = _typeBalances[_tokenType][msg.sender].add(1);
-        return _tokenType;
+        _mintWithTokenURI(msg.sender, tokenType, uri);
+        _typeBalances[tokenType][msg.sender] = _typeBalances[tokenType][msg.sender].add(1);
+        return tokenType;
     }
 
-    function mint(uint128 tokenType, address[] calldata to, string calldata uri) external whenNotPaused creatorOnly(tokenType) {
-        require(_maxIndexOfType[tokenType].add(to.length) < _INDEX_MASK);
+    function _mint(uint256 tokenType, address[] memory to, string memory uri) internal whenNotPaused creatorOnly(tokenType) {
+        require(_maxIndexOfType[tokenType].add(to.length) < _INDEX_MASK, "Limit of max number of tokens of this type reached");
 
         uint256 index = _maxIndexOfType[tokenType].add(1);
 
@@ -1111,16 +1173,27 @@ contract MultiNFT is Initializable, ERC721, ERC721Enumerable, ERC721MultiMetadat
         _maxIndexOfType[tokenType] = to.length.add(_maxIndexOfType[tokenType]);
     }
 
+    function mint(string calldata tokenName, address[] calldata to, string calldata uri) external {
+        _mint(tokenTypeOfName(tokenName), to, uri);
+    }
+
     function _mintWithTokenURI(address to, uint256 tokenId, string memory tokenURI) internal returns (bool) {
         _mint(to, tokenId);
         _setTokenURI(tokenId, tokenURI);
         return true;
     }
 
+    function _transferFrom(address from, address to, uint256 tokenId) internal {
+        super._transferFrom(from, to, tokenId);
+        uint256 tokenType = getType(tokenId);
+        _typeBalances[tokenType][from] = _typeBalances[tokenType][from].sub(1);
+        _typeBalances[tokenType][to] = _typeBalances[tokenType][to].add(1);
+    }
+
     // sets only when eixsting URI is blank
     function setTokenURI(uint256 tokenId, string calldata uri) external whenNotPaused {
-        require(bytes(uri).length != 0);
-        require(ownerOf(tokenId) == msg.sender);
+        require(bytes(uri).length != 0, "URI cannot be empty");
+        require(ownerOf(tokenId) == msg.sender, "Only owner can set uri");
         _setTokenURI(tokenId, uri);
     }
 
@@ -1129,10 +1202,9 @@ contract MultiNFT is Initializable, ERC721, ERC721Enumerable, ERC721MultiMetadat
      * @param tokenId uint256 id of the ERC721 token to be burned.
      */
     function burn(uint256 tokenId) external whenNotPaused {
-        address owner = ownerOf(tokenId);
         uint256 tokenType = getType(tokenId);
-        _burn(owner, tokenId);
-        _typeBalances[tokenType][owner] = _typeBalances[tokenType][owner].sub(1);
+        _burn(msg.sender, tokenId);
+        _typeBalances[tokenType][msg.sender] = _typeBalances[tokenType][msg.sender].sub(1);
     }
 
     uint256[50] private ______gap;
