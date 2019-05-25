@@ -1096,6 +1096,8 @@ contract MultiNFT is Initializable, ERC721, ERC721Enumerable, ERC721MultiMetadat
         _;
     }
 
+    event CreateType(string name, string, symbol, string uri, address indexed creator);
+
     function initialize(string memory name, string memory symbol, address[] memory pausers) public initializer {
         ERC721._initialize();
         ERC721Enumerable._initialize();
@@ -1157,6 +1159,9 @@ contract MultiNFT is Initializable, ERC721, ERC721Enumerable, ERC721MultiMetadat
         // mint the first token of this type with index 0 and send to type creator
         _mintWithTokenURI(msg.sender, tokenType, uri);
         _typeBalances[tokenType][msg.sender] = _typeBalances[tokenType][msg.sender].add(1);
+
+        emit CreateType(name, symbol, uri, msg.sender);
+
         return tokenType;
     }
 
