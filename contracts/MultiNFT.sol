@@ -770,7 +770,9 @@ contract ERC721Metadata is Initializable, ERC165, ERC721, IERC721Metadata {
      */
     function _setTokenURI(uint256 tokenId, string memory uri) internal {
         require(_exists(tokenId), "Token does not exist");
-        require(bytes(_tokenURIs[tokenId]).length == 0, "URI already set");
+        // decision to let the owner change token URI can have interesting consequences, but until ipfs based addressing becomes a reality,
+        // we cannot rely on web links that can break
+        //require(bytes(_tokenURIs[tokenId]).length == 0, "URI already set");
         _tokenURIs[tokenId] = uri;
     }
 
