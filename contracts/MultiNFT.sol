@@ -1098,6 +1098,8 @@ contract MultiNFT is Initializable, ERC721, ERC721Enumerable, ERC721MultiMetadat
 
     event CreateType(string name, string, symbol, string uri, address indexed creator);
 
+    event SetUri(uint256 indexed tokenId, string uri);
+
     function initialize(string memory name, string memory symbol, address[] memory pausers) public initializer {
         ERC721._initialize();
         ERC721Enumerable._initialize();
@@ -1202,6 +1204,8 @@ contract MultiNFT is Initializable, ERC721, ERC721Enumerable, ERC721MultiMetadat
         require(bytes(uri).length != 0, "URI cannot be empty");
         require(ownerOf(tokenId) == msg.sender, "Only owner can set uri");
         _setTokenURI(tokenId, uri);
+
+        emit SetUri(tokenId, uri);
     }
 
     /**
