@@ -1138,7 +1138,7 @@ contract MultiNFT is Initializable, ERC721, ERC721Enumerable, ERC721MultiMetadat
 
     // This function only creates the type.
     function createType(string calldata name, string calldata symbol, string calldata uri) external whenNotPaused returns (uint256) {
-        require(_numTypesCreated < _TYPE_MASK, "Limit of max number of types reached");
+        require(_numTypesCreated < _TYPE_MASK, "Limit of max number of types reached. This is the end of the world.");
         require(!nameExists(name), "Name already exists");
         require(!symbolExists(symbol), "Symbol already exists");
 
@@ -1159,7 +1159,7 @@ contract MultiNFT is Initializable, ERC721, ERC721Enumerable, ERC721MultiMetadat
     }
 
     function _mint(uint256 tokenType, address[] memory to, string memory uri) internal whenNotPaused creatorOnly(tokenType) {
-        require(_maxIndexOfType[tokenType].add(to.length) < _INDEX_MASK, "Limit of max number of tokens of this type reached");
+        require(_maxIndexOfType[tokenType].add(to.length) < _INDEX_MASK, "Limit of max number of tokens of this type reached and the world ends now.");
 
         uint256 index = _maxIndexOfType[tokenType].add(1);
 
