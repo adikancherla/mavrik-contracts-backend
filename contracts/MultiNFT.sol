@@ -38,6 +38,37 @@ library Strings {
         }
         return _b1;
     }
+
+    /**
+     * Equals
+     * 
+     * Compares the characters of two strings, to ensure that they have an 
+     * identical footprint. A more gas optimal implementation based on checking hashes instead of char by char comparison is possible 
+     * 
+     * @param _base When being used for a data type this is the extended object
+     *               otherwise this is the string base to compare against
+     * @param _value The string the base is being compared to
+     * @return bool Simply notates if the two string have an equivalent
+     */
+    function equals(string memory _base, string memory _value) 
+        internal
+        pure
+        returns (bool) {
+        bytes memory _baseBytes = bytes(_base);
+        bytes memory _valueBytes = bytes(_value);
+
+        if (_baseBytes.length != _valueBytes.length) {
+            return false;
+        }
+
+        for(uint i = 0; i < _baseBytes.length; i++) {
+            if (_baseBytes[i] != _valueBytes[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }
 
 /**
@@ -769,7 +800,8 @@ contract ERC721Metadata is Initializable, ERC165, ERC721, IERC721Metadata {
      * @param uri string URI to assign
      */
     function _setTokenURI(uint256 tokenId, string memory uri) internal {
-        require(_exists(tokenId), "Token does not exist");
+        // the require here is redundant
+        //require(_exists(tokenId), "Token does not exist");
         // decision to let the owner change token URI can have interesting consequences, but until ipfs based addressing becomes a reality,
         // we cannot rely on web links that can break
         //require(bytes(_tokenURIs[tokenId]).length == 0, "URI already set");
@@ -1091,16 +1123,31 @@ contract MultiNFT is Initializable, ERC721, ERC721Enumerable, ERC721MultiMetadat
     // dev fee for token actions, if exists; type => fee
     mapping (uint256 => uint256) private _devFee;
 
+    mapping (uint256 => string) private _webTypeCreators;
+
+    mapping (uint256 => string) private _webOwners;
+
+    mapping (address => bool) private _webApprovers;
+    
+
     modifier creatorOnly(uint256 tokenType) {
         require(_typeCreators[tokenType] == msg.sender, "Only token type creators can perform this operation");
         _;
     }
 
-    event CreateType(string name, string, symbol, string uri, address indexed creator);
+    modifier webApprovedOnly() {
+        require(_webApprovers[msg.sender] == true, "Only web approvers can perform this operation");
+        _;
+    }
 
+    event CreateType(string name, string symbol, string uri, address indexed creator);
     event SetUri(uint256 indexed tokenId, string uri);
+    event WebCreateType(string name, string symbol, string uri, string owner, address indexed operator);
+    event WebMint(string tokenName, string uri, uint256 count, string owner);
+    event WebClaimType(string tokenName, string oldOwner, address indexed newOwner);
+    event WebTransfer(address indexed to, uint256 indexed tokenId, string owner);
 
-    function initialize(string memory name, string memory symbol, address[] memory pausers) public initializer {
+    function initialize(string memory name, string memory symbol, address[] memory pausers, address[] memory webApprovers) public initializer {
         ERC721._initialize();
         ERC721Enumerable._initialize();
         ERC721Metadata._initialize(name, symbol);
@@ -1109,10 +1156,13 @@ contract MultiNFT is Initializable, ERC721, ERC721Enumerable, ERC721MultiMetadat
         ERC721Pausable._initialize(address(this));
         _removePauser(address(this));
 
-        // Add the requested pausers (this can be done after renouncing since
-        // this is an internal calls)
+        // Add the requested pausers (this can be done after renouncing since this is an internal call)
         for (uint256 i = 0; i < pausers.length; ++i) {
             _addPauser(pausers[i]);
+        }
+
+        for (uint256 i = 0; i < webApprovers.length; ++i) {
+            addWebApprover(webApprovers[i]);
         }
     }
 
@@ -1205,6 +1255,77 @@ contract MultiNFT is Initializable, ERC721, ERC721Enumerable, ERC721MultiMetadat
         require(ownerOf(tokenId) == msg.sender, "Only owner can set uri");
         _setTokenURI(tokenId, uri);
 
+        emit SetUri(tokenId, uri);
+    }
+
+    function addWebApprover(address approver) public whenNotPaused webApprovedOnly {
+        _webApprovers[approver] = true;
+    }
+
+    function removeWebApprover(address approver) public whenNotPaused webApprovedOnly {
+        delete _webApprovers[approver];
+    }
+
+    function webCreateType(string calldata name, string calldata symbol, string calldata uri, string calldata owner) external whenNotPaused webApprovedOnly returns (uint256) {
+        require(_numTypesCreated < _TYPE_MASK, "Limit of max number of types reached. This is the end of the world.");
+        require(!nameExists(name), "Name already exists");
+        require(!symbolExists(symbol), "Symbol already exists");
+
+        // Store the type in the upper 128 bits
+        _numTypesCreated = _numTypesCreated.add(1);
+        uint256 tokenType = (_numTypesCreated << 128);
+        require(!_exists(tokenType), "Token type already exists"); // may be redundant
+
+        _webTypeCreators[tokenType] = owner;
+        _setName(tokenType, name);
+        _setSymbol(tokenType, symbol);
+        _setTokenURI(tokenType, uri);
+        _webOwners[tokenType] = owner;
+
+        emit WebCreateType(name, symbol, uri, owner, msg.sender);
+        return tokenType;
+    }
+
+    function webClaimType(string calldata tokenName, string calldata oldOwner, address newOwner) external whenNotPaused webApprovedOnly returns (bool) {
+        uint256 tokenType = tokenTypeOfName(tokenName);
+        require(_webTypeCreators[tokenType].equals(oldOwner), "Only owner can claim type");
+        _typeCreators[tokenType] = newOwner;
+        delete _webTypeCreators[tokenType];
+        emit WebClaimType(tokenName, oldOwner, newOwner);
+        return true;
+    }
+
+    function webMint(string calldata tokenName, string calldata uri, uint256 count, string calldata owner) external whenNotPaused webApprovedOnly {
+        require(count < 20, "Cannot mint more than 20 tokens at a time"); //arbitrarily set to 20
+        uint256 tokenType = tokenTypeOfName(tokenName);
+        require(_maxIndexOfType[tokenType].add(count) < _INDEX_MASK, "Limit of max number of tokens of this type reached and the world ends now.");
+
+        uint256 index = _maxIndexOfType[tokenType].add(1);
+
+        for (uint256 i = 0; i < count; ++i) {
+            uint256 tokenId  = tokenType | index.add(i);
+            _setTokenURI(tokenId, uri);
+            _webOwners[tokenId] = owner;
+        }
+
+        _maxIndexOfType[tokenType] = count.add(_maxIndexOfType[tokenType]);
+
+        emit WebMint(tokenName, uri, count, owner);
+    }
+
+    function webTransfer(address to, uint256 tokenId, string calldata owner) external whenNotPaused webApprovedOnly {
+        require(_webOwners[tokenId].equals(owner), "Only owner can transfer");
+        _mint(to, tokenId);
+        uint256 tokenType = getType(tokenId);
+        _typeBalances[tokenType][to] = _typeBalances[tokenType][to].add(1);
+        delete _webOwners[tokenId];
+        emit WebTransfer(to, tokenId, owner);
+    }
+
+    function webSetTokenURI(uint256 tokenId, string calldata uri, string calldata owner) external whenNotPaused webApprovedOnly {
+        require(bytes(uri).length != 0, "URI cannot be empty");
+        require(_webOwners[tokenId].equals(owner), "Only owner can set uri");
+        _setTokenURI(tokenId, uri);
         emit SetUri(tokenId, uri);
     }
 
