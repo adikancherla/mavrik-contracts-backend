@@ -1124,7 +1124,7 @@ contract MultiNFT is Initializable, ERC721, ERC721Enumerable, ERC721MultiMetadat
         }
 
         for (uint256 i = 0; i < webApprovers.length; ++i) {
-            addWebApprover(webApprovers[i]);
+            _webApprovers[webApprovers[i]] = true;
         }
     }
 
