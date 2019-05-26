@@ -1232,6 +1232,7 @@ contract MultiNFT is Initializable, ERC721, ERC721Enumerable, ERC721MultiMetadat
         require(_numTypesCreated < _TYPE_MASK, "Limit of max number of types reached. This is the end of the world.");
         require(!nameExists(name), "Name already exists");
         require(!symbolExists(symbol), "Symbol already exists");
+        require(bytes(owner).length != 0, "Owner cannot be empty");
 
         // Store the type in the upper 128 bits
         _numTypesCreated = _numTypesCreated.add(1);
@@ -1249,34 +1250,50 @@ contract MultiNFT is Initializable, ERC721, ERC721Enumerable, ERC721MultiMetadat
     }
 
     function webClaimType(string calldata tokenName, string calldata oldOwner, address newOwner) external whenNotPaused webApprovedOnly returns (bool) {
+        require(newOwner != address(0), "New owner cannot be 0x0");
+        require(bytes(oldOwner).length != 0, "Owner cannot be empty");
+        require(bytes(tokenName).length != 0, "Token name cannot be empty");
         uint256 tokenType = tokenTypeOfName(tokenName);
         require(_webTypeCreators[tokenType].equals(oldOwner), "Only owner can claim type");
+
+        _mint(newOwner, tokenType);
         _typeCreators[tokenType] = newOwner;
+        _typeBalances[tokenType][newOwner] = _typeBalances[tokenType][newOwner].add(1);
+
+        delete _webOwners[tokenType];
         delete _webTypeCreators[tokenType];
+
         emit WebClaimType(tokenName, oldOwner, newOwner);
         return true;
     }
 
-    function webMint(string calldata tokenName, string calldata uri, uint256 count, string calldata owner) external whenNotPaused webApprovedOnly {
-        require(count < 20, "Cannot mint more than 20 tokens at a time"); //arbitrarily set to 20
+    function webMint(string calldata tokenName, string calldata uri, uint256 count, string calldata owner) external whenNotPaused webApprovedOnly returns (uint256[] memory) {
+        require(count < 21, "Cannot mint more than 20 tokens at a time"); //arbitrarily set to 20
+        require(bytes(owner).length != 0, "Owner cannot be empty");
+        require(bytes(tokenName).length != 0, "Token name cannot be empty");
         uint256 tokenType = tokenTypeOfName(tokenName);
+        require(_webTypeCreators[tokenType].equals(owner), "Only type creator can mint");
         require(_maxIndexOfType[tokenType].add(count) < _INDEX_MASK, "Limit of max number of tokens of this type reached and the world ends now.");
 
         uint256 index = _maxIndexOfType[tokenType].add(1);
+        uint256[] memory tokenIds = new uint256[](count);
 
         for (uint256 i = 0; i < count; ++i) {
             uint256 tokenId  = tokenType | index.add(i);
             _setTokenURI(tokenId, uri);
             _webOwners[tokenId] = owner;
+            tokenIds[i] = tokenId;
         }
 
         _maxIndexOfType[tokenType] = count.add(_maxIndexOfType[tokenType]);
 
         emit WebMint(tokenName, uri, count, owner);
+        return tokenIds;
     }
 
     function webTransfer(address to, uint256 tokenId, string calldata owner) external whenNotPaused webApprovedOnly {
         require(_webOwners[tokenId].equals(owner), "Only owner can transfer");
+        require(bytes(owner).length != 0, "Owner cannot be empty");
         _mint(to, tokenId);
         uint256 tokenType = getType(tokenId);
         _typeBalances[tokenType][to] = _typeBalances[tokenType][to].add(1);
@@ -1286,6 +1303,7 @@ contract MultiNFT is Initializable, ERC721, ERC721Enumerable, ERC721MultiMetadat
 
     function webSetTokenURI(uint256 tokenId, string calldata uri, string calldata owner) external whenNotPaused webApprovedOnly {
         require(bytes(uri).length != 0, "URI cannot be empty");
+        require(bytes(owner).length != 0, "Owner cannot be empty");
         require(_webOwners[tokenId].equals(owner), "Only owner can set uri");
         _setTokenURI(tokenId, uri);
         emit SetUri(tokenId, uri);
