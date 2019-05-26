@@ -71,46 +71,6 @@ library Strings {
     }
 }
 
-/**
- * @title Roles
- * @dev Library for managing addresses assigned to a Role.
- */
-library Roles {
-    struct Role {
-        mapping (address => bool) bearer;
-    }
-
-    /**
-     * @dev give an account access to this role
-     */
-    function add(Role storage role, address account) internal {
-        require(account != address(0), "Account cannot be 0 address");
-        require(!has(role, account), "Account already has this role");
-
-        role.bearer[account] = true;
-    }
-
-    /**
-     * @dev remove an account's access to this role
-     */
-    function remove(Role storage role, address account) internal {
-        require(account != address(0), "Account cannot be 0 address");
-        require(has(role, account), "Account does not have this role");
-
-        role.bearer[account] = false;
-    }
-
-    /**
-     * @dev check if an account has this role
-     * @return bool
-     */
-    function has(Role storage role, address account) internal view returns (bool) {
-        require(account != address(0), "Account cannot be zero address");
-        return role.bearer[account];
-    }
-}
-
-
 library SafeMath {
     /**
     * @dev Multiplies two unsigned integers, reverts on overflow.
@@ -227,12 +187,11 @@ contract Initializable {
 }
 
 contract PauserRole is Initializable {
-    using Roles for Roles.Role;
 
     event PauserAdded(address indexed account);
     event PauserRemoved(address indexed account);
 
-    Roles.Role private _pausers;
+    mapping(address => bool) private _pausers;
 
     function _initialize(address sender) internal initializer {
         if (!isPauser(sender)) {
@@ -246,7 +205,10 @@ contract PauserRole is Initializable {
     }
 
     function isPauser(address account) public view returns (bool) {
-        return _pausers.has(account);
+        if(_pausers[account]) {
+            return true;
+        }
+        return false;
     }
 
     function addPauser(address account) public onlyPauser {
@@ -258,12 +220,12 @@ contract PauserRole is Initializable {
     }
 
     function _addPauser(address account) internal {
-        _pausers.add(account);
+        _pausers[account] = true;
         emit PauserAdded(account);
     }
 
     function _removePauser(address account) internal {
-        _pausers.remove(account);
+        delete _pausers[account];
         emit PauserRemoved(account);
     }
 
