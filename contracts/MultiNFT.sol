@@ -1102,11 +1102,11 @@ contract MultiNFT is Initializable, ERC721, ERC721Enumerable, ERC721MultiMetadat
         _;
     }
 
-    event CreateType(string name, string symbol, string uri, address indexed creator);
+    event CreateType(string name, string symbol, uint256 indexed tokenType, string uri, address indexed creator);
     event SetUri(uint256 indexed tokenId, string uri);
-    event WebCreateType(string name, string symbol, string uri, string owner, address indexed operator);
-    event WebMint(string tokenName, string uri, uint256 count, string owner);
-    event WebClaimType(string tokenName, string oldOwner, address indexed newOwner);
+    event WebCreateType(string name, string symbol, uint256 indexed tokenType, string uri, string owner, address indexed operator);
+    event WebMint(string tokenName, uint256 indexed tokenType, uint256[] tokenIds, string uri, uint256 count, string owner);
+    event WebClaimType(string tokenName, uint256 indexed tokenType, string oldOwner, address indexed newOwner);
     event WebTransfer(address indexed to, uint256 indexed tokenId, string owner);
 
     function initialize(string memory name, string memory symbol, address[] memory pausers, address[] memory webApprovers) public initializer {
@@ -1174,7 +1174,7 @@ contract MultiNFT is Initializable, ERC721, ERC721Enumerable, ERC721MultiMetadat
         _mintWithTokenURI(msg.sender, tokenType, uri);
         _typeBalances[tokenType][msg.sender] = _typeBalances[tokenType][msg.sender].add(1);
 
-        emit CreateType(name, symbol, uri, msg.sender);
+        emit CreateType(name, symbol, tokenType, uri, msg.sender);
 
         return tokenType;
     }
@@ -1245,7 +1245,7 @@ contract MultiNFT is Initializable, ERC721, ERC721Enumerable, ERC721MultiMetadat
         _setTokenURI(tokenType, uri);
         _webOwners[tokenType] = owner;
 
-        emit WebCreateType(name, symbol, uri, owner, msg.sender);
+        emit WebCreateType(name, symbol, tokenType, uri, owner, msg.sender);
         return tokenType;
     }
 
@@ -1263,7 +1263,7 @@ contract MultiNFT is Initializable, ERC721, ERC721Enumerable, ERC721MultiMetadat
         delete _webOwners[tokenType];
         delete _webTypeCreators[tokenType];
 
-        emit WebClaimType(tokenName, oldOwner, newOwner);
+        emit WebClaimType(tokenName, tokenType, oldOwner, newOwner);
         return true;
     }
 
@@ -1287,7 +1287,7 @@ contract MultiNFT is Initializable, ERC721, ERC721Enumerable, ERC721MultiMetadat
 
         _maxIndexOfType[tokenType] = count.add(_maxIndexOfType[tokenType]);
 
-        emit WebMint(tokenName, uri, count, owner);
+        emit WebMint(tokenName, tokenType, tokenIds, uri, count, owner);
         return tokenIds;
     }
 
