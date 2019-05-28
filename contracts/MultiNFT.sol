@@ -1108,6 +1108,7 @@ contract MultiNFT is Initializable, ERC721, ERC721Enumerable, ERC721MultiMetadat
     event WebMint(string tokenName, uint256 indexed tokenType, uint256[] tokenIds, string uri, uint256 count, string owner);
     event WebClaimType(string tokenName, uint256 indexed tokenType, string oldOwner, address indexed newOwner);
     event WebTransfer(address indexed to, uint256 indexed tokenId, string owner);
+    event PaymentReceived(address from, uint256 amount);
 
     function initialize(string memory name, string memory symbol, address[] memory pausers, address[] memory webApprovers) public initializer {
         ERC721._initialize();
@@ -1126,6 +1127,10 @@ contract MultiNFT is Initializable, ERC721, ERC721Enumerable, ERC721MultiMetadat
         for (uint256 i = 0; i < webApprovers.length; ++i) {
             _webApprovers[webApprovers[i]] = true;
         }
+    }
+
+    function () external payable {
+        emit PaymentReceived(msg.sender, msg.value);
     }
 
     function getTypeBalance(uint256 tokenType, address owner) public view returns (uint256) {
@@ -1320,4 +1325,5 @@ contract MultiNFT is Initializable, ERC721, ERC721Enumerable, ERC721MultiMetadat
     }
 
     uint256[50] private ______gap;
+
 }
