@@ -1,6 +1,5 @@
 const path = require("path");
 const HDWalletProvider = require("truffle-hdwallet-provider");
-const PrivateKeyProvider = require("truffle-privatekey-provider");
 require("dotenv").config();
 
 module.exports = {
@@ -25,7 +24,7 @@ module.exports = {
     ropsten: {
       provider: function() {
         return new HDWalletProvider(
-          process.env.MNEMONIC,
+          process.env.PRIV_KEY,
           process.env.WEB3_PROVIDER
         );
       },
@@ -36,7 +35,7 @@ module.exports = {
     kovan: {
       provider: function() {
         return new HDWalletProvider(
-          process.env.MNEMONIC,
+          process.env.PRIV_KEY,
           process.env.WEB3_PROVIDER
         );
       },
@@ -46,7 +45,7 @@ module.exports = {
     },
     rinkeby: {
       provider: () =>
-        new HDWalletProvider(process.env.MNENOMIC, process.env.WEB3_PROVIDER),
+        new HDWalletProvider(process.env.PRIV_KEY, process.env.WEB3_PROVIDER),
       network_id: 4,
       gas: 8000000,
       gasPrice: 10000000000
@@ -54,7 +53,7 @@ module.exports = {
     // main ethereum network(mainnet)
     main: {
       provider: () =>
-        new PrivateKeyProvider(process.env.MAINNET_PRIV_KEY, process.env.WEB3_PROVIDER),
+        new HDWalletProvider(process.env.PRIV_KEY, process.env.WEB3_PROVIDER),
       network_id: 1,
       gas: 8000000,
       gasPrice: 10000000000
