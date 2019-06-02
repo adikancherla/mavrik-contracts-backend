@@ -32,6 +32,17 @@ module.exports = {
       gas: 8000000,
       gasPrice: 10000000000
     },
+    matictest: {
+      provider: function() {
+        return new HDWalletProvider(
+          process.env.PRIV_KEY,
+          process.env.WEB3_PROVIDER
+        );
+      },
+      network_id: "*",
+      gas: 8000000,
+      gasPrice: 10000000000
+    },
     kovan: {
       provider: function() {
         return new HDWalletProvider(
